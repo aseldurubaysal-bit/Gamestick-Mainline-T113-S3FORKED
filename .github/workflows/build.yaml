@@ -38,12 +38,17 @@ jobs:
         run: |
           sh kernel/apply-patches.sh work/src/linux-6.18.39
 
-      - name: 3. Build Kernel and Modules
+      - name: 3. Build Kernel and All Modules
         run: |
           JOBS=$(nproc) sh kernel/build-kernel.sh \
             work/src/linux-6.18.39 \
             work/build \
             arm-linux-gnueabihf-
+          
+          # Tum derlenen modulleri build/artifacts icindeki modules klasorune topluyoruz
+          cd work/src/linux-6.18.39
+          mkdir -p ../../../work/build/artifacts/modules
+          find . -name "*.ko" -exec cp {} ../../../work/build/artifacts/modules/ \;
 
       - name: 4. Package for Android Vendor Bootloader
         run: |
@@ -55,7 +60,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: t113-game-stick-artifacts
+          name: t113-game-stick-all-modules
           path: |
             work/build/artifacts/
             boot-new.img
