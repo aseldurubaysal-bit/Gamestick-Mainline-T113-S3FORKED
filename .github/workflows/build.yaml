@@ -1,3 +1,7 @@
+
+Run details
+Workflow file for this run
+.github/workflows/build.yaml at df43fe7
 name: Build Game Stick Kernel 6.18.39 (All Built-In)
 
 on:
@@ -25,56 +29,43 @@ jobs:
             android-tools-mkbootimg \
             curl \
             xz-utils
-
       - name: Prepare Work Directory
         run: |
           mkdir -p work
-
       - name: 1. Fetch Kernel Sources
         run: |
           sh vm/fetch-sources.sh work
-
       - name: 2. Apply Patches
         run: |
           sh kernel/apply-patches.sh work/src/linux-6.18.39
-
       - name: 3. Configure, Force All =m to =y, and Build Kernel
         run: |
           # Mutlak yollar (Absolute paths) tanımlanarak path karışıklığı tamamen önlendi
           kernel_source="$PWD/work/src/linux-6.18.39"
           output_dir="$PWD/work/build"
           cross_compile="arm-linux-gnueabihf-"
-
           mkdir -p "$output_dir/artifacts"
-
           # 1. Boş temel config oluştur
           make -C "$kernel_source" O="$output_dir" ARCH=arm CROSS_COMPILE="$cross_compile" allnoconfig
-
           # 2. game-stick.fragment ile birleştir
           "$kernel_source/scripts/kconfig/merge_config.sh" -m -O "$output_dir" \
             "$output_dir/.config" "kernel/game-stick.fragment"
-
           # 3. Doğrudan doğruya çıktı dizinindeki .config'de tüm =m'leri =y yap
           sed -i 's/=m$/=y/g' "$output_dir/.config"
-
           # 4. Config'i çekirdeğe uyumlu hale getir
           make -C "$kernel_source" O="$output_dir" ARCH=arm CROSS_COMPILE="$cross_compile" olddefconfig
-
           # 5. DTS dosyasını kopyala ve zImage, dtbs, modules ile derle
           cp dts/sun8i-t113s-h133-game-stick.dts "$kernel_source/arch/arm/boot/dts/allwinner/"
           make -C "$kernel_source" O="$output_dir" ARCH=arm CROSS_COMPILE="$cross_compile" -j$(nproc) zImage dtbs modules
-
           # 6. Derlenen çıktıları resmi artifacts klasörüne kopyala
           cp "$output_dir/arch/arm/boot/zImage" "$output_dir/artifacts/"
           cp "$output_dir/arch/arm/boot/dts/allwinner/sun8i-t113s-h133-game-stick.dtb" "$output_dir/artifacts/"
-
       - name: 4. Package for Android Vendor Bootloader
         run: |
           sh scripts/make-android-boot.sh \
             work/build/artifacts/zImage \
             work/build/artifacts/sun8i-t113s-h133-game-stick.dtb \
             boot-new.img
-
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -82,4 +73,3 @@ jobs:
           path: |
             work/build/artifacts/
             boot-new.img
-
