@@ -26,9 +26,9 @@ jobs:
             curl \
             xz-utils
 
-      - name: Prepare Work Directories
+      - name: Prepare Work Directory
         run: |
-          mkdir -p work/src work/build
+          mkdir -p work
 
       - name: 1. Fetch Kernel Sources
         run: |
@@ -38,34 +38,49 @@ jobs:
         run: |
           sh kernel/apply-patches.sh work/src/linux-6.18.39
 
-      - name: 3. Configure and Force All =m to =y
+      - name: 3. Configure, Force All =m to =y, and Build Kernel
         run: |
-          # Temel config'i oluştur ve fragment ile birleştir
-          make -C work/src/linux-6.18.39 O="../../../work/build" ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- allnoconfig
-          work/src/linux-6.18.39/scripts/kconfig/merge_config.sh -m -O "work/build" \
-            "work/build/.config" "kernel/game-stick.fragment"
+          # Değişkenler bu adımın içinde net olarak tanımlandı (Hata payı sıfır)
+          kernel_source="work/src/linux-6.18.39"
+          output_dir="work/build"
+          cross_compile="arm-linux-gnueabihf-"
 
-          # --> İŞTE ASIL NOKTA: src içindeki / build içindeki config'de ne kadar =m varsa hepsi =y yapılır <--
-          sed -i 's/=m$/=y/g' work/build/.config
+          # Çıktı ve artifact klasörlerini oluştur
+          mkdir -p "$output_dir/artifacts"
 
-          # Config değişikliklerini çekirdeğe uyumlu hale getir
-          make -C work/src/linux-6.18.39 O="../../../work/build" ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
+          # 1. Boş temel config oluştur
+          make -C "$kernel_source" O="$output_dir" ARCH=arm CROSS_COMPILE="$cross_compile" allnoconfig
 
-          # DTS kopyala ve zImage ile modülleri derle
-          cp dts/sun8i-t113s-h133-game-stick.dts work/src/linux-6.18.39/arch/arm/boot/dts/allwinner/
-          make -C work/src/linux-6.18.39 O="../../../work/build" ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -j$(nproc) zImage modules
+          # 2. game-stick.fragment ile birleştir
+          "$kernel_source/scripts/kconfig/merge_config.sh" -m -O "$output_dir" \
+            "$output_dir/.config" "kernel/game-stick.fragment"
+
+          # 3. İŞTE BURADA: Doğrudan tanımlı path üzerinden tüm =m leri =y yapıyoruz
+          sed -i 's/=m$/=y/g' "$output_dir/.config"
+
+          # 4. Config'i çekirdeğe uyumlu hale getir
+          make -C "$kernel_source" O="$output_dir" ARCH=arm CROSS_COMPILE="$cross_compile" olddefconfig
+
+          # 5. DTS dosyasını kopyala ve zImage, dtbs, modules ile derle
+          cp dts/sun8i-t113s-h133-game-stick.dts "$kernel_source/arch/arm/boot/dts/allwinner/"
+          make -C "$kernel_source" O="$output_dir" ARCH=arm CROSS_COMPILE="$cross_compile" -j$(nproc) zImage dtbs modules
+
+          # 6. Çıktıları resmi artifacts klasörüne kopyala
+          cp "$output_dir/arch/arm/boot/zImage" "$output_dir/artifacts/"
+          cp "$output_dir/arch/arm/boot/dts/allwinner/sun8i-t113s-h133-game-stick.dtb" "$output_dir/artifacts/"
 
       - name: 4. Package for Android Vendor Bootloader
         run: |
           sh scripts/make-android-boot.sh \
-            work/build/arch/arm/boot/zImage \
-            work/build/arch/arm/boot/dts/allwinner/sun8i-t113s-h133-game-stick.dtb \
+            work/build/artifacts/zImage \
+            work/build/artifacts/sun8i-t113s-h133-game-stick.dtb \
             boot-new.img
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: t113-game-stick-all-builtin
+          name: t113-game-stick-artifacts
           path: |
-            work/build/arch/arm/boot/zImage
+            work/build/artifacts/
             boot-new.img
+
