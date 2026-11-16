@@ -1,4 +1,4 @@
-name: Build Game Stick Kernel 6.18.39
+name: Build Game Stick Kernel 6.18.39 (All Built-In)
 
 on:
   workflow_dispatch:
@@ -38,30 +38,34 @@ jobs:
         run: |
           sh kernel/apply-patches.sh work/src/linux-6.18.39
 
-      - name: 3. Build Kernel and All Modules
+      - name: 3. Configure and Force All =m to =y
         run: |
-          JOBS=$(nproc) sh kernel/build-kernel.sh \
-            work/src/linux-6.18.39 \
-            work/build \
-            arm-linux-gnueabihf-
-          
-          # Tum derlenen modulleri build/artifacts icindeki modules klasorune topluyoruz
-          cd work/src/linux-6.18.39
-          mkdir -p ../../../work/build/artifacts/modules
-          find . -name "*.ko" -exec cp {} ../../../work/build/artifacts/modules/ \;
+          # Temel config'i oluştur ve fragment ile birleştir
+          make -C work/src/linux-6.18.39 O="../../../work/build" ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- allnoconfig
+          work/src/linux-6.18.39/scripts/kconfig/merge_config.sh -m -O "work/build" \
+            "work/build/.config" "kernel/game-stick.fragment"
+
+          # --> İŞTE ASIL NOKTA: src içindeki / build içindeki config'de ne kadar =m varsa hepsi =y yapılır <--
+          sed -i 's/=m$/=y/g' work/build/.config
+
+          # Config değişikliklerini çekirdeğe uyumlu hale getir
+          make -C work/src/linux-6.18.39 O="../../../work/build" ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
+
+          # DTS kopyala ve zImage ile modülleri derle
+          cp dts/sun8i-t113s-h133-game-stick.dts work/src/linux-6.18.39/arch/arm/boot/dts/allwinner/
+          make -C work/src/linux-6.18.39 O="../../../work/build" ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -j$(nproc) zImage modules
 
       - name: 4. Package for Android Vendor Bootloader
         run: |
           sh scripts/make-android-boot.sh \
-            work/build/artifacts/zImage \
-            work/build/artifacts/sun8i-t113s-h133-game-stick.dtb \
+            work/build/arch/arm/boot/zImage \
+            work/build/arch/arm/boot/dts/allwinner/sun8i-t113s-h133-game-stick.dtb \
             boot-new.img
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: t113-game-stick-all-modules
+          name: t113-game-stick-all-builtin
           path: |
-            work/build/artifacts/
+            work/build/arch/arm/boot/zImage
             boot-new.img
-
