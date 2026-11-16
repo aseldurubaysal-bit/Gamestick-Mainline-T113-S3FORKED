@@ -1,0 +1,62 @@
+name: Build Game Stick Kernel 6.18.39
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libssl-dev \
+            libelf-dev \
+            bison \
+            flex \
+            bc \
+            gcc-arm-linux-gnueabihf \
+            android-tools-mkbootimg \
+            curl \
+            xz-utils
+
+      - name: Prepare Work Directories
+        run: |
+          mkdir -p work/src work/build
+
+      - name: 1. Fetch Kernel Sources
+        run: |
+          sh vm/fetch-sources.sh work
+
+      - name: 2. Apply Patches
+        run: |
+          sh kernel/apply-patches.sh work/src/linux-6.18.39
+
+      - name: 3. Build Kernel and Modules
+        run: |
+          JOBS=$(nproc) sh kernel/build-kernel.sh \
+            work/src/linux-6.18.39 \
+            work/build \
+            arm-linux-gnueabihf-
+
+      - name: 4. Package for Android Vendor Bootloader
+        run: |
+          sh scripts/make-android-boot.sh \
+            work/build/artifacts/zImage \
+            work/build/artifacts/sun8i-t113s-h133-game-stick.dtb \
+            boot-new.img
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: t113-game-stick-artifacts
+          path: |
+            work/build/artifacts/
+            boot-new.img
+
