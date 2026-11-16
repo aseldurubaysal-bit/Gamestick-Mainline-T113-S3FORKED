@@ -40,12 +40,11 @@ jobs:
 
       - name: 3. Configure, Force All =m to =y, and Build Kernel
         run: |
-          # Değişkenler bu adımın içinde net olarak tanımlandı (Hata payı sıfır)
-          kernel_source="work/src/linux-6.18.39"
-          output_dir="work/build"
+          # Mutlak yollar (Absolute paths) tanımlanarak path karışıklığı tamamen önlendi
+          kernel_source="$PWD/work/src/linux-6.18.39"
+          output_dir="$PWD/work/build"
           cross_compile="arm-linux-gnueabihf-"
 
-          # Çıktı ve artifact klasörlerini oluştur
           mkdir -p "$output_dir/artifacts"
 
           # 1. Boş temel config oluştur
@@ -55,7 +54,7 @@ jobs:
           "$kernel_source/scripts/kconfig/merge_config.sh" -m -O "$output_dir" \
             "$output_dir/.config" "kernel/game-stick.fragment"
 
-          # 3. İŞTE BURADA: Doğrudan tanımlı path üzerinden tüm =m leri =y yapıyoruz
+          # 3. Doğrudan doğruya çıktı dizinindeki .config'de tüm =m'leri =y yap
           sed -i 's/=m$/=y/g' "$output_dir/.config"
 
           # 4. Config'i çekirdeğe uyumlu hale getir
@@ -65,7 +64,7 @@ jobs:
           cp dts/sun8i-t113s-h133-game-stick.dts "$kernel_source/arch/arm/boot/dts/allwinner/"
           make -C "$kernel_source" O="$output_dir" ARCH=arm CROSS_COMPILE="$cross_compile" -j$(nproc) zImage dtbs modules
 
-          # 6. Çıktıları resmi artifacts klasörüne kopyala
+          # 6. Derlenen çıktıları resmi artifacts klasörüne kopyala
           cp "$output_dir/arch/arm/boot/zImage" "$output_dir/artifacts/"
           cp "$output_dir/arch/arm/boot/dts/allwinner/sun8i-t113s-h133-game-stick.dtb" "$output_dir/artifacts/"
 
