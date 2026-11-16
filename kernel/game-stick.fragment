@@ -243,8 +243,8 @@ CONFIG_RTC_DRV_SUN6I=y
 #
 # Firmware "rtlwifi/rtl8188eufw.bin" must exist on the rootfs
 # (Alpine: linux-firmware-rtlwifi).
-CONFIG_MAC80211=m
-CONFIG_RTL8XXXU=m
+CONFIG_MAC80211=y
+CONFIG_RTL8XXXU=y
 
 # WPA2/WPA3 ciphers. mac80211 selects most of these, but pinning them means a
 # future allnoconfig pass cannot quietly drop them the way it did REGULATOR,
@@ -282,7 +282,7 @@ CONFIG_PACKET=y
 CONFIG_INET=y
 CONFIG_IP_PNP=n
 CONFIG_WIRELESS=y
-CONFIG_CFG80211=m
+CONFIG_CFG80211=y
 CONFIG_CFG80211_WEXT=y
 CONFIG_RFKILL=y
 CONFIG_WLAN=y
@@ -290,13 +290,13 @@ CONFIG_WLAN=y
 # Emergency USB Ethernet adapters (modules)
 CONFIG_NETDEVICES=y
 CONFIG_ETHERNET=y
-CONFIG_USB_NET_DRIVERS=m
-CONFIG_USB_USBNET=m
-CONFIG_USB_NET_CDCETHER=m
-CONFIG_USB_NET_CDC_NCM=m
-CONFIG_USB_NET_RNDIS_HOST=m
-CONFIG_USB_NET_ASIX=m
-CONFIG_USB_NET_AX88179_178A=m
+CONFIG_USB_NET_DRIVERS=y
+CONFIG_USB_USBNET=y
+CONFIG_USB_NET_CDCETHER=y
+CONFIG_USB_NET_CDC_NCM=y
+CONFIG_USB_NET_RNDIS_HOST=y
+CONFIG_USB_NET_ASIX=y
+CONFIG_USB_NET_AX88179_178A=y
 # Disabled: r8152 drives Realtek USB *Ethernet* adapters, which this board
 # does not have - networking is the RTL8188EU WiFi dongle via rtl8xxxu. Worse,
 # it registers a choose_configuration callback that runs against every USB
